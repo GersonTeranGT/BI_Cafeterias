@@ -1,6 +1,6 @@
--- 03_historial_cafeteriapostgres.sql
--- CARGA HISTÓRICA PARA POSTGRESQL
--- VERSIÓN CORREGIDA: SIN '' EN ALIAS
+-- 03_postgresql_cafeteria_historial.sql
+-- CARGA HISTÓRICA PARA POSTGRESQL - ENFOQUE OPERATIVO
+-- Clientes corporativos, metas operativas y encuestas de calidad (2024-2026)
 
 SET search_path TO gestion_cafe, public;
 
@@ -47,10 +47,10 @@ WHERE NOT EXISTS (
 );
 
 -- =====================================================
--- 2. METAS MENSUALES (Julio 2024 - Diciembre 2024)
+-- 2. METAS OPERATIVAS (Julio 2024 - Julio 2026)
 -- =====================================================
 WITH meses AS (
-    SELECT generate_series(DATE '2024-07-01', DATE '2024-12-01', INTERVAL '1 month')::date AS periodo
+    SELECT generate_series(DATE '2024-07-01', DATE '2026-07-01', INTERVAL '1 month')::date AS periodo
 ),
 tiendas AS (
     SELECT codigo_tienda
@@ -61,57 +61,54 @@ metas AS (
     SELECT
         t.codigo_tienda,
         m.periodo,
+        CASE t.codigo_tienda
+            WHEN 'CENTRO' THEN 150 + (EXTRACT(YEAR FROM m.periodo)::int - 2024) * 10
+            WHEN 'NORTE' THEN 180 + (EXTRACT(YEAR FROM m.periodo)::int - 2024) * 10
+            WHEN 'SUR' THEN 220 + (EXTRACT(YEAR FROM m.periodo)::int - 2024) * 15
+            ELSE 180 + (EXTRACT(YEAR FROM m.periodo)::int - 2024) * 10
+        END - CASE EXTRACT(MONTH FROM m.periodo)::int
+            WHEN 7 THEN 10 WHEN 8 THEN 5 WHEN 12 THEN 15 ELSE 0
+        END AS meta_tiempo_espera_seg,
         ROUND((
             CASE t.codigo_tienda
-                WHEN 'NORTE' THEN 2600
-                WHEN 'CENTRO' THEN 1800
-                WHEN 'SUR' THEN 1500
-                WHEN 'VALLE' THEN 2200
+                WHEN 'CENTRO' THEN 70
+                WHEN 'NORTE' THEN 65
+                WHEN 'SUR' THEN 55
+                ELSE 60
             END
-            * CASE EXTRACT(MONTH FROM m.periodo)::int
-                WHEN 7 THEN 0.85
-                WHEN 8 THEN 0.90
-                WHEN 9 THEN 0.95
-                WHEN 10 THEN 1.00
-                WHEN 11 THEN 1.05
-                WHEN 12 THEN 1.10
+            + (EXTRACT(YEAR FROM m.periodo)::int - 2024) * 3
+            - CASE EXTRACT(MONTH FROM m.periodo)::int
+                WHEN 1 THEN 5 WHEN 12 THEN 10 ELSE 0
             END
-        )::numeric, 2) AS meta_ventas,
+        )::numeric, 2) AS meta_productividad_min,
         ROUND((
             CASE t.codigo_tienda
-                WHEN 'NORTE' THEN 120
-                WHEN 'CENTRO' THEN 90
-                WHEN 'SUR' THEN 80
-                WHEN 'VALLE' THEN 100
+                WHEN 'CENTRO' THEN 7
+                WHEN 'NORTE' THEN 8
+                WHEN 'SUR' THEN 10
+                ELSE 8
             END
-            * 0.90
-        )::numeric, 0)::integer AS meta_clientes,
-        ROUND((
-            CASE t.codigo_tienda
-                WHEN 'NORTE' THEN 4.30
-                WHEN 'CENTRO' THEN 4.20
-                WHEN 'SUR' THEN 4.00
-                WHEN 'VALLE' THEN 4.10
+            - (EXTRACT(YEAR FROM m.periodo)::int - 2024) * 0.5
+            + CASE EXTRACT(MONTH FROM m.periodo)::int
+                WHEN 6 THEN 2 WHEN 7 THEN 3 WHEN 12 THEN 4 ELSE 0
             END
-            * 0.95
-        )::numeric, 2) AS meta_satisfaccion
+        )::numeric, 2) AS meta_merma_max
     FROM meses m
     CROSS JOIN tiendas t
 )
-INSERT INTO meta_mensual (codigo_tienda, periodo, meta_ventas, meta_clientes, meta_satisfaccion)
-SELECT codigo_tienda, periodo, meta_ventas, meta_clientes, meta_satisfaccion
+INSERT INTO meta_operativa (codigo_tienda, periodo, meta_tiempo_espera_seg, meta_productividad_min, meta_merma_max)
+SELECT codigo_tienda, periodo, meta_tiempo_espera_seg, meta_productividad_min, meta_merma_max
 FROM metas
-ON CONFLICT (codigo_tienda, periodo)
-DO NOTHING;
+ON CONFLICT (codigo_tienda, periodo) DO NOTHING;
 
 -- =====================================================
--- 3. ENCUESTAS HISTÓRICAS (Julio 2024 - Julio 2026)
+-- 3. ENCUESTAS DE CALIDAD HISTÓRICAS (Julio 2024 - Julio 2026)
 -- =====================================================
-DELETE FROM encuesta_satisfaccion
-WHERE comentario LIKE 'Historico BI Cafe%';
+DELETE FROM encuesta_calidad
+WHERE comentario LIKE 'Historico BI Operativo%';
 
-INSERT INTO encuesta_satisfaccion
-    (fecha, codigo_tienda, documento_cliente, puntuacion, tiempo_espera_minutos, comentario)
+INSERT INTO encuesta_calidad
+    (fecha, codigo_tienda, documento_cliente, puntuacion_calidad_cafe, puntuacion_rapidez, puntuacion_amabilidad, comentario)
 SELECT
     (m.periodo + ((n * 5 + EXTRACT(MONTH FROM m.periodo)::int) % 28) * INTERVAL '1 day')::date AS fecha,
     t.codigo_tienda,
@@ -133,18 +130,21 @@ SELECT
         WHEN MOD(n + EXTRACT(YEAR FROM m.periodo)::int, 9) = 0 THEN 1
         WHEN MOD(n + EXTRACT(YEAR FROM m.periodo)::int, 7) = 0 THEN 6
         ELSE 4
-    END AS puntuacion,
-    CASE t.codigo_tienda
-        WHEN 'CENTRO' THEN 4 + MOD(n * 2 + EXTRACT(MONTH FROM m.periodo)::int, 10)
-        WHEN 'NORTE' THEN 8 + MOD(n * 3 + EXTRACT(MONTH FROM m.periodo)::int, 16)
-        WHEN 'VALLE' THEN 9 + MOD(n * 4 + EXTRACT(MONTH FROM m.periodo)::int, 20)
-        ELSE 18 + MOD(n * 5 + EXTRACT(MONTH FROM m.periodo)::int, 35)
-    END AS tiempo_espera_minutos,
+    END AS puntuacion_calidad_cafe,
     CASE
-        WHEN t.codigo_tienda = 'SUR' THEN 'Historico BI Cafe - oportunidad de mejora en atencion'
-        WHEN t.codigo_tienda = 'CENTRO' THEN 'Historico BI Cafe - atencion rapida'
-        WHEN t.codigo_tienda = 'NORTE' THEN 'Historico BI Cafe - buena atencion'
-        ELSE 'Historico BI Cafe - local comodo'
+        WHEN MOD(n + EXTRACT(MONTH FROM m.periodo)::int, 5) = 0 THEN 2
+        WHEN MOD(n + EXTRACT(MONTH FROM m.periodo)::int, 7) = 0 THEN 5
+        ELSE 3 + MOD(n + EXTRACT(MONTH FROM m.periodo)::int, 3)
+    END AS puntuacion_rapidez,
+    CASE
+        WHEN MOD(n + EXTRACT(MONTH FROM m.periodo)::int, 4) = 0 THEN 3
+        ELSE 4 + MOD(n + EXTRACT(MONTH FROM m.periodo)::int, 2)
+    END AS puntuacion_amabilidad,
+    CASE
+        WHEN t.codigo_tienda = 'SUR' THEN 'Historico BI Operativo - oportunidad de mejora en atencion'
+        WHEN t.codigo_tienda = 'CENTRO' THEN 'Historico BI Operativo - atencion rapida'
+        WHEN t.codigo_tienda = 'NORTE' THEN 'Historico BI Operativo - buena atencion'
+        ELSE 'Historico BI Operativo - local comodo'
     END AS comentario
 FROM generate_series(DATE '2024-07-01', DATE '2026-07-01', INTERVAL '1 month') AS m(periodo)
 CROSS JOIN (VALUES ('NORTE'), ('CENTRO'), ('SUR'), ('VALLE')) AS t(codigo_tienda)
@@ -153,30 +153,68 @@ CROSS JOIN generate_series(1, 4) AS n;
 -- =====================================================
 -- 4. REGISTROS PROBLEMÁTICOS ADICIONALES
 -- =====================================================
-INSERT INTO encuesta_satisfaccion
-    (fecha, codigo_tienda, documento_cliente, puntuacion, tiempo_espera_minutos, comentario)
+INSERT INTO encuesta_calidad
+    (fecha, codigo_tienda, documento_cliente, puntuacion_calidad_cafe, puntuacion_rapidez, puntuacion_amabilidad, comentario)
 VALUES
-    (DATE '2025-06-15', 'SUR', '1712345608', 7, 120, 'Historico BI Cafe - puntuacion invalida (7 > 5)'),
-    (DATE '2025-09-20', 'SUR', '171-234-5701', 0, 90, 'Historico BI Cafe - puntuacion cero'),
-    (DATE '2026-02-10', 'VALLE', '1712345601 ', 6, 75, 'Historico BI Cafe - puntuacion fuera de rango'),
-    (DATE '2026-05-25', 'NORTE', '171.234.5716', 8, 110, 'Historico BI Cafe - doble problema');
+    (DATE '2025-06-15', 'SUR', '1712345608', 7, 8, 6, 'Historico BI Operativo - puntuacion invalida (7 > 5)'),
+    (DATE '2025-09-20', 'SUR', '171-234-5701', 0, 1, 2, 'Historico BI Operativo - puntuacion cero'),
+    (DATE '2026-02-10', 'VALLE', '1712345601 ', 6, 4, 5, 'Historico BI Operativo - puntuacion fuera de rango'),
+    (DATE '2026-05-25', 'NORTE', '171.234.5716', 8, 7, 6, 'Historico BI Operativo - doble problema');
 
 -- =====================================================
--- 5. COMPROBACIONES (CORREGIDAS - SIN '' EN ALIAS)
+-- 5. HORARIO IDEAL PARA TODAS LAS TIENDAS (COMPLETAR)
+-- =====================================================
+INSERT INTO horario_ideal (codigo_tienda, dia_semana, hora_inicio, hora_fin, baristas_requeridos)
+SELECT
+    t.codigo_tienda,
+    d.dia_semana,
+    h.hora_inicio,
+    h.hora_fin,
+    CASE t.codigo_tienda
+        WHEN 'CENTRO' THEN h.baristas_requeridos + 1
+        WHEN 'NORTE' THEN h.baristas_requeridos
+        WHEN 'VALLE' THEN h.baristas_requeridos
+        ELSE GREATEST(1, h.baristas_requeridos - 1)
+    END AS baristas_requeridos
+FROM (VALUES ('NORTE'), ('CENTRO'), ('SUR'), ('VALLE')) AS t(codigo_tienda)
+CROSS JOIN (VALUES ('Lunes'), ('Martes'), ('Miercoles'), ('Jueves'), ('Viernes'), ('Sabado'), ('Domingo')) AS d(dia_semana)
+CROSS JOIN (
+    VALUES ('08:00:00'::time, '10:00:00'::time, 2),
+           ('10:00:00'::time, '14:00:00'::time, 3),
+           ('14:00:00'::time, '18:00:00'::time, 2),
+           ('18:00:00'::time, '20:00:00'::time, 1)
+) AS h(hora_inicio, hora_fin, baristas_requeridos)
+ON CONFLICT DO NOTHING;
+
+-- =====================================================
+-- 6. COMPROBACIONES
 -- =====================================================
 SELECT '=== CLIENTES CORPORATIVOS AGREGADOS ===' AS mensaje;
 SELECT COUNT(*) AS nuevos_clientes
 FROM cliente
 WHERE documento LIKE '17250000%';
 
-SELECT '=== METAS MENSUALES AGREGADAS ===' AS mensaje;
+SELECT '=== METAS OPERATIVAS GENERADAS ===' AS mensaje;
 SELECT
     TO_CHAR(periodo, 'YYYY-MM') AS periodo,
     COUNT(*) AS metas_cargadas,
-    SUM(meta_ventas) AS meta_total
-FROM meta_mensual
+    ROUND(AVG(meta_tiempo_espera_seg)::numeric, 0) AS espera_promedio_meta,
+    ROUND(AVG(meta_productividad_min)::numeric, 2) AS productividad_promedio_meta
+FROM meta_operativa
 GROUP BY TO_CHAR(periodo, 'YYYY-MM')
 ORDER BY periodo;
+
+SELECT '=== ENCUESTAS DE CALIDAD GENERADAS ===' AS mensaje;
+SELECT
+    TO_CHAR(fecha, 'YYYY-MM') AS periodo,
+    codigo_tienda,
+    COUNT(*) AS encuestas,
+    ROUND(AVG(puntuacion_calidad_cafe)::numeric, 2) AS calidad_cafe_promedio,
+    ROUND(AVG(puntuacion_rapidez)::numeric, 2) AS rapidez_promedio
+FROM encuesta_calidad
+WHERE comentario LIKE 'Historico BI Operativo%'
+GROUP BY TO_CHAR(fecha, 'YYYY-MM'), codigo_tienda
+ORDER BY periodo, codigo_tienda;
 
 SELECT '=== TOTAL DE REGISTROS POR TABLA ===' AS mensaje;
 SELECT 'zona' AS tabla, COUNT(*) AS registros FROM zona
@@ -187,27 +225,27 @@ SELECT 'segmento_cliente', COUNT(*) FROM segmento_cliente
 UNION ALL
 SELECT 'cliente', COUNT(*) FROM cliente
 UNION ALL
-SELECT 'meta_mensual', COUNT(*) FROM meta_mensual
+SELECT 'empleado_gestion', COUNT(*) FROM empleado_gestion
 UNION ALL
-SELECT 'encuesta_satisfaccion', COUNT(*) FROM encuesta_satisfaccion;
+SELECT 'horario_ideal', COUNT(*) FROM horario_ideal
+UNION ALL
+SELECT 'meta_operativa', COUNT(*) FROM meta_operativa
+UNION ALL
+SELECT 'encuesta_calidad', COUNT(*) FROM encuesta_calidad;
 
 SELECT '=== PROBLEMAS DE CALIDAD EN ENCUESTAS ===' AS mensaje;
 SELECT 
     'Puntuacion fuera de rango (0,6,7,8)' AS descripcion,
     COUNT(*) AS cantidad
-FROM encuesta_satisfaccion
-WHERE puntuacion NOT BETWEEN 1 AND 5
-UNION ALL
-SELECT 
-    'Tiempo de espera > 60 minutos',
-    COUNT(*)
-FROM encuesta_satisfaccion
-WHERE tiempo_espera_minutos > 60
+FROM encuesta_calidad
+WHERE puntuacion_calidad_cafe NOT BETWEEN 1 AND 5
+   OR puntuacion_rapidez NOT BETWEEN 1 AND 5
+   OR puntuacion_amabilidad NOT BETWEEN 1 AND 5
 UNION ALL
 SELECT 
     'Documentos con guiones, puntos o espacios',
     COUNT(*)
-FROM encuesta_satisfaccion
+FROM encuesta_calidad
 WHERE documento_cliente LIKE '%-%' 
    OR documento_cliente LIKE '%.%' 
    OR documento_cliente LIKE '% %';
