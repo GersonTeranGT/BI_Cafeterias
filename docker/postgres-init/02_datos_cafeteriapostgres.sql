@@ -39,8 +39,8 @@ INSERT INTO cliente (documento, nombres, ciudad, fecha_nacimiento, sexo, codigo_
 ('1712345603', 'Camila Gomez', 'Sangolqui', '1973-09-12', 'F', 'FREC', '2025-04-04', 'camila_gomez@correo.com', TRUE),
 ('1712345604', 'Andrea Rodriguez', 'Quito ', '1998-07-18', 'M', 'FREC', '2025-12-15', 'andrea_rodriguez@correo.com', TRUE),
 ('1712345605', 'Jose Ortiz', 'quito', '1996-04-04', 'M', 'VIP', '2025-03-23', 'jose_ortiz@correo.com', TRUE),
-('1712345605', 'MARIA PEREZ', 'QUITO', '1984-05-14', 'F', 'FREC', '2025-06-01', 'maria.perez@correo.com', TRUE),
-('171-234-5615', 'Sofia Torres', 'quito', '1992-09-09', 'F', 'NUEVO', '2026-01-03', 'sofia@correo.com', TRUE),
+('1712345511', 'MARIA PEREZ', 'QUITO', '1984-05-14', 'F', 'FREC', '2025-06-01', 'maria.perez@correo.com', TRUE),
+('1712345615', 'Sofia Torres', 'quito', '1992-09-09', 'F', 'NUEVO', '2026-01-03', 'sofia@correo.com', TRUE),
 ('0000000000', 'Cliente de prueba', NULL, NULL, NULL, 'INACT', '2025-01-01', NULL, FALSE);
 
 -- =====================================================
@@ -51,11 +51,11 @@ INSERT INTO empleado_gestion (documento, nombres, cargo, salario_mensual, fecha_
 ('1712345602', 'Maria Lopez', 'Barista', 750.00, '2024-02-01', 'CENTRO', 'Intermedio', TRUE),
 ('1712345603', 'Ana Torres', 'Barista', 700.00, '2024-03-10', 'NORTE', 'Intermedio', TRUE),
 ('1712345604', 'Luis Martinez', 'Barista', 700.00, '2024-04-20', 'NORTE', 'Basico', TRUE),
-('171-234-5605', 'Pedro Jimenez', 'Barista', 700.00, '2024-05-15', 'SUR', 'Basico', TRUE),
+('1712345605', 'Pedro Jimenez', 'Barista', 700.00, '2024-05-15', 'SUR', 'Basico', TRUE),
 ('1712345606', 'Juan Perez', 'Barista', 750.00, '2024-06-01', 'SUR', 'Intermedio', TRUE),
 ('1712345607', 'Sofia Reyes', 'Barista Senior', 800.00, '2024-07-10', 'VALLE', 'Avanzado', TRUE),
 ('1712345608', 'Diego Flores', 'Barista', 650.00, '2024-08-20', 'VALLE', 'Basico', TRUE),
-('171-234-5609', 'Laura Castro', 'Barista', 700.00, '2024-09-15', 'CENTRO', 'Intermedio', TRUE),
+('1712345609', 'Laura Castro', 'Barista', 700.00, '2024-09-15', 'CENTRO', 'Intermedio', TRUE),
 ('1712345610 ', 'Pablo Ortiz', 'Barista Senior', 800.00, '2024-10-01', 'CENTRO', 'Avanzado', TRUE);
 
 -- =====================================================

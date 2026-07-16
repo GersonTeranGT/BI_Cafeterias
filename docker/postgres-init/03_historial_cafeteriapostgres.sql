@@ -113,12 +113,12 @@ SELECT
     (m.periodo + ((n * 5 + EXTRACT(MONTH FROM m.periodo)::int) % 28) * INTERVAL '1 day')::date AS fecha,
     t.codigo_tienda,
     CASE MOD(n + EXTRACT(MONTH FROM m.periodo)::int, 15)
-        WHEN 0 THEN '1712345601'
-        WHEN 1 THEN '1712345602'
-        WHEN 2 THEN '1712345603'
-        WHEN 3 THEN '1712345610 '
-        WHEN 4 THEN '171-234-5615'
-        WHEN 5 THEN '171.234.5716'
+        WHEN 0 THEN '1712345678'
+        WHEN 1 THEN '1712345698'
+        WHEN 2 THEN '1712345690'
+        WHEN 3 THEN '1712345610'
+        WHEN 4 THEN '1712345619'
+        WHEN 5 THEN '1712345717'
         WHEN 6 THEN '9999999999'
         WHEN 7 THEN '1725000001'
         WHEN 8 THEN '1725000005'
